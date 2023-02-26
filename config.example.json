@@ -1,0 +1,6 @@
+{
+    "PRODUCTION": false,
+    "DISCORD_TOKEN": "aabbccddee....",
+    "STRIPE_API_KEY": "sk_test_aabbcc...",
+    "SERVER_PORT": 5500
+}

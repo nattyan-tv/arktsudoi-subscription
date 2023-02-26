@@ -1,0 +1,3 @@
+async-stripe
+sanic
+#nextcord
