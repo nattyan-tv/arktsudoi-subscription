@@ -1,6 +1,5 @@
 import sanic
 import json
-import aiohttp
 
 from async_stripe import stripe
 

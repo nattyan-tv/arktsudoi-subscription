@@ -1,6 +1,8 @@
 # dinosaur-stripeconnect
 Stripe Connect integration for Dinosaur
 
+日本語で説明したちゃんとしたやつは[こちら](README_ja.md)にあります。
+
 # Installation
 1. Install requirements  
   (`pip install -r requirements.txt`)

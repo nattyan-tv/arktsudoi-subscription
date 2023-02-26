@@ -4,7 +4,7 @@ class Config:
         if STRIPE_API_KEY[:3] != "sk_":
             raise ValueError("Invalid Stripe API Key (Stripe API Key must start with 'sk_')")
         if STRIPE_API_KEY[:8] == "sk_live_":
-            print("WARNING: Stripe API Key is a live key ('sk_live_').")
+            print("########## WARNING ##########\nStripe API Key is a live key ('sk_live_').")
         self.STRIPE_API_KEY = STRIPE_API_KEY
         self.DISCORD_GUILD_ID = DISCORD_GUILD_ID
         self.SERVER_PORT = SERVER_PORT
