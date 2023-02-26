@@ -21,7 +21,8 @@ Stripe Connect integration for Dinosaur
 
 key|description
 ---|---
-`PRODUCTION`|Set to `true` if you are running the server in production.
 `DISCORD_TOKEN`|Discord bot token.
 `STRIPE_API_KEY`|Stripe API key.
 `SERVER_PORT`|Port to run the server on.
+`DISCORD_GUILD_ID`|Discord guild ID.
+`ROLES`|Roles to give to users. (`dict[ProductID, RoleID]`)
