@@ -29,9 +29,9 @@
     "DISCORD_TOKEN": "<Discord BOTのTOKEN>",
     "STRIPE_API_KEY": "<sk_...から始まるStripeのAPI KEY>",
     "SERVER_PORT": <サーバーのポート>,
-    "DISCORD_GUILD_ID": <対象サーバーのID>,
+    "DISCORD_GUILD_ID": "<対象サーバーのID>",
     "ROLES": {
-        "<prod_...から始まるStripe商品のID>": <付与したいロールのID>
+        "<prod_...から始まるStripe商品のID>": "<付与したいロールのID>"
     }
 }
 ```
