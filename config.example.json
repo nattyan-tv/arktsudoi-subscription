@@ -2,8 +2,8 @@
     "DISCORD_TOKEN": "aabbccddee....",
     "STRIPE_API_KEY": "sk_test_aabbcc...",
     "SERVER_PORT": 5500,
-    "DISCORD_GUILD_ID": 123456789012345678,
+    "DISCORD_GUILD_ID": "123456789012345678",
     "ROLES": {
-        "prod_12345...": 123456789012345678
+        "prod_12345...": "123456789012345678"
     }
 }
