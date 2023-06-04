@@ -10,11 +10,11 @@ from async_stripe import stripe
 
 import clientmodel
 import configmodel
+import notification
 
 CONFIG = configmodel.Config(**json.load(open("config.json", "r")))
 
 stripe.api_key = CONFIG.STRIPE_API_KEY
-client = clientmodel.Client(CONFIG.DISCORD_TOKEN, CONFIG.DISCORD_GUILD_ID)
 
 async def write_userdata(data) -> None:
     async with aiofiles.open("userdata", "w") as f:
@@ -38,6 +38,10 @@ class ActionType(enum.Enum):
     SKIP = 4
 
 app = sanic.Sanic(f"dinosaur-stripeconnect-{'LIVE' if CONFIG.LIVE else 'TEST'}")
+
+client = clientmodel.Client(CONFIG.DISCORD_TOKEN, CONFIG.DISCORD_GUILD_ID)
+notify = notification.DiscordNotification(CONFIG.NOTIFY_WEBHOOK)
+
 
 @app.route("/webhook", methods=["GET", "DELETE", "HEAD", "OPTIONS", "PATCH", "PUT", "POST"])
 async def webhook(request: sanic.Request):
@@ -72,17 +76,32 @@ async def webhook(request: sanic.Request):
             return sanic.response.json({"status": "error", "message": "Member not found", "code": 401})
         member_id = member["user"]["id"] # 1234567890123
 
+        embeds = []
+
         for item in data["items"]["data"]:
             product = item["plan"]["product"] # prod_...
 
             if product not in CONFIG.ROLES:
                 continue
 
+
             role_id = CONFIG.ROLES[product] # 1234567890123
             actions.append({
                 "action": ActionType.REMOVE,
                 "role_id": role_id,
             })
+
+            embed = notification.DiscordEmbed()
+            embed.set_title("サブスクリプションが削除されました。")
+            embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+            embed.set_color(0xff0000)
+            embed.add_field("ステータス", "サブスクリプションが削除されました。\n`customer.subscription.deleted`", True)
+            embed.add_field("ロール状態", "削除されました。", True)
+            embed.add_field("対象ロール", f"<@&{role_id}>", True)
+            embed.set_footer("DinosaurStripeConnect")
+            embeds.append(embed)
+
+        await notify.send(embed=embeds)
 
     elif request.json["type"] == "checkout.session.completed":
         print("Checkout Session Event")
@@ -110,18 +129,80 @@ async def webhook(request: sanic.Request):
         match status:
             case "trialing":
                 action = ActionType.ADD
+                embed = notification.DiscordEmbed()
+                embed.set_title("トライアルが開始されました！")
+                embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                embed.set_color(0x00ff00)
+                embed.add_field("ステータス", "トライアル中\n`checkout.session.completed`/`trialing`", True)
+                embed.add_field("ロール状態", "付与されました。（期限が切れるとロールは削除されます。）", True)
+                embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                embed.set_footer("DinosaurStripeConnect")
+                await notify.send(embed=embed)
             case "active":
                 action = ActionType.ADD
+                embed = notification.DiscordEmbed()
+                embed.set_title("サブスクリプションが開始されました！")
+                embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                embed.set_color(0x00ff00)
+                embed.add_field("ステータス", "サブスクリプションアクティブ\n`checkout.session.completed`/`active`", True)
+                embed.add_field("ロール状態", "付与されました。（期限が切れるとロールは削除されます。）", True)
+                embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                embed.set_footer("DinosaurStripeConnect")
+                await notify.send(embed=embed)
             case "incomplete":
                 action = ActionType.SKIP
+                embed = notification.DiscordEmbed()
+                embed.set_title("支払いを待機しています。")
+                embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                embed.set_color(0xffff00)
+                embed.add_field("ステータス", "購入を試みたが支払いは完了していない\n`checkout.session.completed`/`incomplete`", True)
+                embed.add_field("ロール状態", "操作は行われません。", True)
+                embed.set_footer("DinosaurStripeConnect")
+                await notify.send(embed=embed)
             case "incomplete_expired":
                 action = ActionType.REMOVE
+                embed = notification.DiscordEmbed()
+                embed.set_title("支払いに失敗しました")
+                embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                embed.set_color(0xff0000)
+                embed.add_field("ステータス", "購入を試みたが支払いに失敗\n`checkout.session.completed`/`incomplete_expired`", True)
+                embed.add_field("ロール状態", "削除されました。", True)
+                embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                embed.set_footer("DinosaurStripeConnect")
+                await notify.send(embed=embed)
             case "past_due":
                 action = ActionType.REMOVE
+                embed = notification.DiscordEmbed()
+                embed.set_title("自動決済に失敗しました")
+                embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                embed.set_color(0xff0000)
+                embed.add_field("ステータス", "自動決済に失敗（Stripeのリトライルールに基づき再度支払いを試みる場合があります）\n`checkout.session.completed`/`past_due`", True)
+                embed.add_field("ロール状態", "削除されました。", True)
+                embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                embed.set_footer("DinosaurStripeConnect")
+                await notify.send(embed=embed)
             case "canceled":
                 action = ActionType.REMOVE
+                embed = notification.DiscordEmbed()
+                embed.set_title("支払いがキャンセルされました。")
+                embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                embed.set_color(0xff0000)
+                embed.add_field("ステータス", "支払いキャンセル\n`checkout.session.completed`/`canceled`", True)
+                embed.add_field("ロール状態", "削除されました。", True)
+                embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                embed.set_footer("DinosaurStripeConnect")
+                await notify.send(embed=embed)
             case "unpaid":
                 action = ActionType.REMOVE
+                embed = notification.DiscordEmbed()
+                embed.set_title("支払いは行われませんでした。")
+                embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                embed.set_color(0xff0000)
+                embed.add_field("ステータス", "支払いは行われませんでした。\n`checkout.session.completed`/`unpaid`", True)
+                embed.add_field("ロール状態", "削除されました。", True)
+                embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                embed.set_footer("DinosaurStripeConnect")
+                await notify.send(embed=embed)
 
         actions.append({
             "action": action,
@@ -152,6 +233,8 @@ async def webhook(request: sanic.Request):
                         role_id = CONFIG.ROLES[product] # 1234567890123
                         await client.del_roles(member_id, role_id)
 
+        embeds = []
+
         for item in data["items"]["data"]:
             product = item["plan"]["product"]
 
@@ -160,25 +243,91 @@ async def webhook(request: sanic.Request):
 
             role_id = CONFIG.ROLES[product] # 1234567890123
             status = data["status"]
+            action = None
+
             match status:
                 case "trialing":
                     action = ActionType.ADD
+                    embed = notification.DiscordEmbed()
+                    embed.set_title("トライアルが開始されました！")
+                    embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                    embed.set_color(0x00ff00)
+                    embed.add_field("ステータス", "トライアル中\n`customer.subscription.updated`/`trialing`", True)
+                    embed.add_field("ロール状態", "付与されました。（期限が切れるとロールは削除されます。）", True)
+                    embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                    embed.set_footer("DinosaurStripeConnect")
+                    embeds.append(embed)
                 case "active":
                     action = ActionType.ADD
+                    embed = notification.DiscordEmbed()
+                    embed.set_title("サブスクリプションが開始されました！")
+                    embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                    embed.set_color(0x00ff00)
+                    embed.add_field("ステータス", "サブスクリプションアクティブ\n`customer.subscription.updated`/`active`", True)
+                    embed.add_field("ロール状態", "付与されました。（期限が切れるとロールは削除されます。）", True)
+                    embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                    embed.set_footer("DinosaurStripeConnect")
+                    embeds.append(embed)
                 case "incomplete":
                     action = ActionType.SKIP
+                    embed = notification.DiscordEmbed()
+                    embed.set_title("支払いを待機しています。")
+                    embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                    embed.set_color(0xffff00)
+                    embed.add_field("ステータス", "購入を試みたが支払いは完了していない\n`customer.subscription.updated`/`incomplete`", True)
+                    embed.add_field("ロール状態", "操作は行われません。", True)
+                    embed.set_footer("DinosaurStripeConnect")
+                    embeds.append(embed)
                 case "incomplete_expired":
                     action = ActionType.REMOVE
+                    embed = notification.DiscordEmbed()
+                    embed.set_title("支払いに失敗しました")
+                    embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                    embed.set_color(0xff0000)
+                    embed.add_field("ステータス", "購入を試みたが支払いに失敗\n`customer.subscription.updated`/`incomplete_expired`", True)
+                    embed.add_field("ロール状態", "削除されました。", True)
+                    embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                    embed.set_footer("DinosaurStripeConnect")
+                    embeds.append(embed)
                 case "past_due":
                     action = ActionType.REMOVE
+                    embed = notification.DiscordEmbed()
+                    embed.set_title("自動決済に失敗しました")
+                    embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                    embed.set_color(0xff0000)
+                    embed.add_field("ステータス", "自動決済に失敗（Stripeのリトライルールに基づき再度支払いを試みる場合があります）\n`customer.subscription.updated`/`past_due`", True)
+                    embed.add_field("ロール状態", "削除されました。", True)
+                    embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                    embed.set_footer("DinosaurStripeConnect")
+                    embeds.append(embed)
                 case "canceled":
                     action = ActionType.REMOVE
+                    embed = notification.DiscordEmbed()
+                    embed.set_title("支払いがキャンセルされました。")
+                    embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                    embed.set_color(0xff0000)
+                    embed.add_field("ステータス", "支払いキャンセル\n`customer.subscription.updated`/`canceled`", True)
+                    embed.add_field("ロール状態", "削除されました。", True)
+                    embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                    embed.set_footer("DinosaurStripeConnect")
+                    embeds.append(embed)
                 case "unpaid":
                     action = ActionType.REMOVE
+                    embed = notification.DiscordEmbed()
+                    embed.set_title("支払いは行われませんでした。")
+                    embed.set_description(f"ユーザー: {user}（<@{member_id}>）\nプラン: {product}")
+                    embed.set_color(0xff0000)
+                    embed.add_field("ステータス", "支払いは行われませんでした。\n`customer.subscription.updated`/`unpaid`", True)
+                    embed.add_field("ロール状態", "削除されました。", True)
+                    embed.add_field("対象ロール", f"<@&{role_id}>", True)
+                    embed.set_footer("DinosaurStripeConnect")
+                    embeds.append(embed)
+
             actions.append({
                 "action": action,
                 "role_id": role_id,
             })
+            await notify.send(embed=embeds)
 
     else:
         return sanic.response.json({"status": "success", "message": "Event not supported", "code": 900})
@@ -187,6 +336,10 @@ async def webhook(request: sanic.Request):
     await client.del_roles(member_id, [action["role_id"] for action in actions if action["action"] == ActionType.REMOVE])
 
     return sanic.response.json({"status": "success", "message": "OK", "code": 500})
+
+@app.listener("after_server_start")
+async def after_server_start(app, loop):
+    print("Server started")
 
 
 
@@ -206,7 +359,7 @@ async def webhook(request: sanic.Request):
     #else:
     #    return sanic.response.json({"status": "error", "message": "Failed to add role", "code": 2})
 
-if __name__ == "__main__":
+def main():
     print("dinosaur-stripeconnect")
     if CONFIG.LIVE:
         print("""\
@@ -214,4 +367,8 @@ if __name__ == "__main__":
 You are running this in LIVE mode.
 ################################""")
     print(f"The webhook url is 'http://localhost:{CONFIG.SERVER_PORT}/webhook' (localrun)")
+
     app.run("0.0.0.0", CONFIG.SERVER_PORT)
+
+if __name__ == "__main__":
+    main()

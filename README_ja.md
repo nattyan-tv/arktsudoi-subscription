@@ -32,6 +32,7 @@
     "DISCORD_GUILD_ID": "<対象サーバーのID>",
     "ROLES": {
         "<prod_...から始まるStripe商品のID>": "<付与したいロールのID>"
-    }
+    },
+    "NOTIFY_WEBHOOK": "<通知用のDiscord Webhook URL>"
 }
 ```

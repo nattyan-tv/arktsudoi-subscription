@@ -28,3 +28,4 @@ key|description
 `SERVER_PORT`|Port to run the server on.
 `DISCORD_GUILD_ID`|Discord guild ID.
 `ROLES`|Roles to give to users. (`dict[ProductID, RoleID]`)
+`NOTIFY_WEBHOOK`|Discord webhook URL to send notifications to.

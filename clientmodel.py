@@ -1,9 +1,11 @@
+import sanic
 import asyncio
 import aiohttp
 
 class Client:
     def __init__(self, token: str, guild_id: int | str, api_version: int | None = None) -> None:
         """Initialize the client"""
+        # self.app = app
         self.token = token # Discord Bot Token
         self.guild_id = str(guild_id) # Discord Guild ID
         self._content_type = "application/json" # HTTP Request Content-Type
@@ -11,7 +13,6 @@ class Client:
         self._base_url = "https://discord.com/api" # Discord API Base URL
         self.api_version: int | None = api_version # Discord API Version
         self._api_url = f"{self._base_url}/v{self.api_version}" if self.api_version else self._base_url # Discord API URL
-        self._session = aiohttp.ClientSession() # aiohttp ClientSession
 
     async def _add_role(self, member_id: str | int, role_id: str | int, reason: str = "Subscription with Stripe is now active. (dinosaur-stripeconnect)"):
         headers = {
@@ -19,8 +20,9 @@ class Client:
             "Content-Type": self._content_type,
             "X-Audit-Log-Reason": reason
         }
-        async with self._session as sess:
+        async with aiohttp.ClientSession() as sess:
             async with sess.put(f"{self._api_url}/guilds/{self.guild_id}/members/{member_id}/roles/{role_id}", headers=headers) as resp:
+                print(resp.status)
                 if resp.status == 204:
                     return True
                 else:
@@ -39,8 +41,9 @@ class Client:
             "Content-Type": self._content_type,
             "X-Audit-Log-Reason": reason
         }
-        async with self._session as sess:
+        async with aiohttp.ClientSession() as sess:
             async with sess.delete(f"{self._api_url}/guilds/{self.guild_id}/members/{member_id}/roles/{role_id}", headers=headers) as resp:
+                print(resp.status)
                 if resp.status == 204:
                     return True
                 else:
@@ -62,8 +65,9 @@ class Client:
             "query": member_name,
             "limit": 1000
         }
-        async with self._session as sess:
+        async with aiohttp.ClientSession() as sess:
             async with sess.get(f"{self._api_url}/guilds/{self.guild_id}/members/search", headers=headers, params=query) as resp:
+                print(resp.status)
                 if resp.status == 200:
                     return await resp.json()
                 else:
