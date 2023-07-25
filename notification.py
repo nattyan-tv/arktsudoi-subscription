@@ -7,7 +7,7 @@ class DiscordEmbed:
     url: str | None = None
     timestamp: str | None = None
     color: int = 0x000000
-    footer: dict[str, str] = {}
+    footer: dict[str, str | None] = {}
     image: dict[str, str] = {}
     thumbnail: dict[str, str] = {}
     author: dict[str, str] = {}

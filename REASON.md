@@ -40,6 +40,20 @@ message: `Product is not supported`
 これは、このサービスがサポートしていない商品が購入された場合に返されます。  
 この場合、ロールは操作されません。
 
+### 101
+
+status: `error`
+message: `Invalid custom field`
+
+これは、送信データ内のカスタムフィールドが不正な場合に返されます。
+
+### 102
+
+status: `error`
+message: `Invalid payment status`
+
+これは、支払い状態を示す`status`が不正な場合に返されます。
+
 ## 2xx
 
 これは、`subscription`の処理中に送信されるものです。
@@ -59,6 +73,12 @@ message: `Customer not found`
 
 これは、サブスクリプションが更新したユーザーの情報が見つからなかった場合に送信されます。
 
+### 202
+
+status: `error`
+message: `Invalid payment status`
+
+これは、支払い状態を示す`status`が不正な場合に返されます。
 ## 3xx
 
 これは、ロール操作で`SKIP`をするときに送信されるものです。
