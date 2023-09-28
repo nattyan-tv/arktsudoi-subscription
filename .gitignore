@@ -3,3 +3,4 @@ config.json
 config.store*
 userdata
 .venv
+*.log
