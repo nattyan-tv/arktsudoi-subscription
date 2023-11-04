@@ -121,7 +121,8 @@ async def webhook(request: sanic.Request):
         if len(data["custom_fields"]) < 1:
             return response.json({"status": "error", "message": "Invalid custom field", "code": 101})
 
-        user_id: str = data["custom_fields"][0]["text"]["value"] # Discord Snowflake UserID
+        user_id: str = data["custom_fields"][0]["numeric"]["value"] # Discord Snowflake UserID
+        user_name: str = data["custom_fields"][1]["text"]["value"] # Discord UserName
 
         customer: str = data["customer"] # cus_...
         userdata[customer] = user_id
